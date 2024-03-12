@@ -1,0 +1,102 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-gcp-vm
+  title: Create an gcp Instance
+  description: Create an Instance to deploy your application
+  tags: ['recommended']
+spec:
+  owner: guests
+  type: service
+  parameters:
+    - title: gcp Instance Creation
+      required:
+         - vmName
+         - MachineType    
+      properties:
+        vmName:
+          title: vmName.
+          type: string
+          description: Name of the Instnace to be created.
+          ui:autofocus: true
+          ui:options:
+            rows: 5
+
+        MachineType:
+          title: Type of Instance.
+          type: string
+          description: Type of the vm that you want to deploy, for eg:- t2.medium, t3.medium etc.
+          enum:
+            - n1-standard-2
+            - n1-standard-4
+
+        action:
+          title: action
+          type: string
+          description: What action do you want to perform? Create or delete?
+          enum:
+            - apply
+            - destroy
+
+    - title: Choose a Repository Location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Location of the repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+  steps:
+# Getting the all the files/details from the template
+    - id: fetch-base
+      name: Fetching Details from content folder
+      action: fetch:template
+      input:
+        url: ./content  # Location of the content directory where catlog-info.yaml file is present for the template
+        values:
+          name: ${{ parameters.vmName}}
+
+# Publish the content of the current working directory to our github directory
+    - id: publish
+      name: Publishing Details
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: This repo is to create an gcp vm ${{ parameters.vmName }} using backstage.
+        repoUrl: ${{ parameters.repoUrl }}
+        repoVisibility: public # or 'internal' or 'private'
+        # defaultBranch: main
+
+# Triggering CI-CD to create resource in our case github action. 
+    - id: github-action
+      name: Starting GitHub action
+      action: github:actions:dispatch
+      input:
+        workflowId:  vm.yml # ID of GitHub action WorkFlow
+        repoUrl: 'github.com?repo=gcpvm&owner=sailesh0099'
+        branchOrTagName: 'main'
+        workflowInputs:
+          vmName: ${{ parameters.vmName }}
+          MachineType: ${{ parameters.MachineType }}
+          action: ${{ parameters.action }}
+
+# Registering new component in the catalog of backstage.
+    - id: register
+      name: Registering the new Component 
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml' # where the info of the catalog is stored.
+
+# Output links  are displayed to the user after the template execution.
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

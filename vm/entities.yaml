@@ -1,0 +1,41 @@
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-system
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: gcpvms
+spec:
+  owner: guests
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-component
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gcpvm-website
+spec:
+  type: website
+  lifecycle: experimental
+  owner: guests
+  system: gcpvms
+  providesApis: [gcpvm-grpc-api]
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-api
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: gcpvm-grpc-api
+spec:
+  type: grpc
+  lifecycle: experimental
+  owner: guests
+  system: gcpvms
+  definition: |
+    syntax = "proto3";
+
+    service gcpvmr {
+      rpc gcpvm (gcpvmMessage) returns (gcpvmMessage) {};
+    }
+
+    message gcpvmMessage {
+      string gcpvm = 1;
+    };
